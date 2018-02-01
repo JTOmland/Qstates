@@ -8,8 +8,8 @@ var game = (function () {
         goalState: { x: 3, y: 0 },
         pit: { x: 3, y: 1 },
         obstacle: { x: 1, y: 1 },
-        startState: { x: 0, y: 2 }
-
+        startState: { x: 0, y: 2 },
+        learningRate: 0.5
     }
     function init(options) {
         if (options) {
@@ -27,20 +27,15 @@ var game = (function () {
     }
 
     function checkBounds(x, y) {
-        console.log("checking bounds for", x, y);
         if (x < 0 || x >= cols || y < 0 || y >= rows) {
-            console.log('returning false from checkBounds for outside world')
             return false;
         }
-        if (x == obstacle.x && y == obstacle.y) {
+        if (x == opt.obstacle.x && y == opt.obstacle.y) {
             //hit an obstacle
             return false;
         }
         return true;
     };
-
-
-
 
     function transition(state, action) {
         console.log('transition function for ', state, action);
@@ -52,21 +47,13 @@ var game = (function () {
         nextState.y = state.location.y;
 
         function matchStates(st) {
-            console.log("checking st", st);
-            console.log('nextState', nextState);
             if (st.location.x == nextState.x && st.location.y == nextState.y) {
                 returnState = st;
-                console.log("setting returnState", returnState)
-
             }
         }
-        console.log('checking if state is goal or pit')
         if (state.type == 'goal' || state.type == 'pit') {
-            console.log('checking if state is goal or pit')
             gridWorld.forEach(function (s) {
-                console.log("state", s, " : opt.startState", opt.startState.x, opt.startState.y);
                 if (s.location.x == opt.startState.x && s.location.y == opt.startState.y) {
-                    console.log('checking if state is goal returning state', s);
                     returnState = s;
                 }
             });
@@ -87,7 +74,6 @@ var game = (function () {
             } else {
                 actualAction = actions[actionIndex - move];
             }
-            console.log('actual action ', actualAction);
             switch (actualAction) {
                 case 'North':
                     if (checkBounds(state.location.x, state.location.y - 1)) {
@@ -113,17 +99,11 @@ var game = (function () {
                         gridWorld.forEach(matchStates);
                     }
                     break;
-
                 default:
                     returnState = state;
                     break;
             }
-
-
         }
-
-
-        console.log('trnasition state returned is ', returnState);
         return returnState;
     }
 
@@ -132,37 +112,21 @@ var game = (function () {
             return;
         }
         // value = value + learningRate * (reward - value)
-        console.log('fromstate and currentstate', fromState, currentState, action)
         var reward = currentState.value;
-        fromState.value = fromState.value + learningRate * (reward - fromState.value);
+        fromState.value = fromState.value + opt.learningRate * (reward - fromState.value);
 
         //the Q has to be max of of rewards given you can play optimally
         var maxQ = 0;
         if (currentState.type == 'goal' || currentState.type == 'pit') {
-            fromState.qState[action].value = fromState.qState[action].value + learningRate * (currentState.value - Math.abs(fromState.qState[action].value))
+            fromState.qState[action].value = fromState.qState[action].value + opt.learningRate * (currentState.value - Math.abs(fromState.qState[action].value))
         } else {
             for (var act in currentState.qState) {
                 if (currentState.qState[act].value > maxQ) {
                     maxQ = currentState.qState[act].value;
                 }
-
             }
-            fromState.qState[action].value = fromState.qState[action].value + learningRate * (maxQ - Math.abs(fromState.qState[action].value))
-
-
+            fromState.qState[action].value = fromState.qState[action].value + opt.learningRate * (maxQ - Math.abs(fromState.qState[action].value))
         }
-        // if (fromState.type == 'goal') {
-        //     maxQ = reward;
-        //     fromState.qState[action].value = fromState.qState[action].value + learningRate * (maxQ -fromState.qState[action].value);
-
-        // } else if (fromState == 'pit') {
-        //     maxQ = reward;
-        //     console.log('entered pit and maxQ is reward of ', maxQ);
-        //     fromState.qState[action].value = fromState.qState[action].value + learningRate * (maxQ + fromState.qState[action].value);
-        // } else {
-        //     fromState.qState[action].value = fromState.qState[action].value + learningRate * (maxQ -fromState.qState[action].value);
-        // }
-        console.log('calculate value end is ', fromState.qState[action].value, action)
         fromState.qState[action].count++;
     }
 
@@ -172,28 +136,18 @@ var game = (function () {
         this.qState = {};
         this.value = 0;
         for (var act of actions) {
-            console.log("Initialize state qstates ", act)
             this.qState[act] = {};
             this.qState[act].value = 0;
             this.qState[act].count = 0;
         }
         if (this.location.x == opt.goalState.x && this.location.y == opt.goalState.y) {
-            console.log("stateVector is equal goalState")
             this.value = opt.maxReward;
             this.type = 'goal';
-
         }
         if (this.location.x == opt.pit.x && this.location.y == opt.pit.y) {
             this.value = opt.minReward;
             this.type = 'pit';
-
         }
-        // if (this.location.x == opt.startstate.location.x && this.location.y == opt.startstate.location.y) {
-        //     pit = stateVector;
-
-        //     startState = stateVector;
-        //     currentState = startState;
-        // }
 
         if (this.location.x == opt.obstacle.x && this.location.y == opt.obstacle.y) {
             this.type = 'obstacle';
