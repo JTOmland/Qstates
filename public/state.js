@@ -1,10 +1,11 @@
 var game = (function () {
     var actions = ['West', 'North', 'East', 'South'];
     var gridWorld = [];
+    var totalCount = 0;
     var opt = {
         maxReward: 1,
         minReward: -1,
-        livingReward: 0,
+        livingReward: -0.1,
         goalState: { x: 3, y: 0 },
         pit: { x: 3, y: 1 },
         obstacle: { x: 1, y: 1 },
@@ -67,6 +68,8 @@ var game = (function () {
             } else {
                 move = 0;
             }
+            //todo: this is temp override so no random movement.
+            //move = 0;
             if (actionIndex - move < 0) {
                 actualAction = actions[actions.length - 1]
             } else if (actionIndex - move > actions.length - 1) {
@@ -107,6 +110,8 @@ var game = (function () {
         return returnState;
     }
 
+    
+
     function calculateValue(fromState, currentState, action) {
         if (fromState.type == 'goal' || fromState.type == 'pit') {
             return;
@@ -118,16 +123,17 @@ var game = (function () {
         //the Q has to be max of of rewards given you can play optimally
         var maxQ = 0;
         if (currentState.type == 'goal' || currentState.type == 'pit') {
-            fromState.qState[action].value = fromState.qState[action].value + opt.learningRate * (currentState.value - Math.abs(fromState.qState[action].value))
+            fromState.qState[action].value = fromState.qState[action].value + opt.learningRate * (currentState.value - fromState.qState[action].value);
         } else {
             for (var act in currentState.qState) {
                 if (currentState.qState[act].value > maxQ) {
                     maxQ = currentState.qState[act].value;
                 }
             }
-            fromState.qState[action].value = fromState.qState[action].value + opt.learningRate * (maxQ - Math.abs(fromState.qState[action].value))
+            fromState.qState[action].value = fromState.qState[action].value + opt.learningRate * (maxQ - fromState.qState[action].value);
         }
         fromState.qState[action].count++;
+        totalCount++;
     }
 
     State.prototype.init = function (x, y, type) {
@@ -153,6 +159,22 @@ var game = (function () {
             this.type = 'obstacle';
         }
 
+    }
+
+    State.prototype.getBestAction = function() {
+       // console.log('State.getBestAction', this);
+            var maxQ = 0;
+            var bestAction = random(actions);
+            console.log("this.qState", this.qState);
+            for (var act in this.qState) {
+                console.log("in loop", act)
+                if (this.qState[act].value + Math.sqrt(2*Math.log2(totalCount/this.qState[act].count)) > maxQ) {
+                    maxQ = this.qState[act].value + Math.sqrt(2*Math.log2(totalCount/this.qState[act].count));
+                    console.log("maxQ for ", act, " is ", maxQ);
+                    bestAction = act;
+                }
+            }
+            return bestAction;
     }
 
     return {

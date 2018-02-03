@@ -2,48 +2,42 @@ var rectSize;
 var states = [];
 var currentState;
 var desiredDirection = true;
-var incrementMode = true;
+var incrementMode = false;
 var rows = 3;
 var cols = 4;
 var gameOver = false;
 var rewardText;
+var iterations = 0;
 
 
 function keyPressed() {
-	 var fromState = currentState;
-	// if (currentState == goalState) {
-	// 	gameOver = true;
-	// 	currentState = winState;
-	// } else if (currentState == pit) {
-	// 	gameOver = true;
-	// 	currentState = loseState;
-	// } else {
-		//console.log("keycode", keyCode);
-		desiredDirection = 'Illegal Move';
-		if (incrementMode) {
-			if (keyCode === LEFT_ARROW) {
-				//console.log('left arrow')
-				currentState = game.transition(currentState, 'West');
-				desiredDirection = 'West';
-			} else if (keyCode === RIGHT_ARROW) {
-				//console.log('right arrow')
-				currentState = game.transition(currentState, 'East');
-				desiredDirection = 'East';
-			} else if (keyCode === UP_ARROW) {
-				//console.log('up arrow')
-				currentState = game.transition(currentState, 'North')
-				desiredDirection = 'North';
-			} else if (keyCode === DOWN_ARROW) {
-				//console.log('down arrow')
-				currentState = game.transition(currentState, 'South')
-				desiredDirection = 'South'
-			} else {
-				//console.log("wrong key return")
-				return;
-			}
+	var fromState = currentState;
+	desiredDirection = 'Illegal Move';
+	if (incrementMode) {
+		if (keyCode === LEFT_ARROW) {
+			//console.log('left arrow')
+			currentState = game.transition(currentState, 'West');
+			desiredDirection = 'West';
+		} else if (keyCode === RIGHT_ARROW) {
+			//console.log('right arrow')
+			currentState = game.transition(currentState, 'East');
+			desiredDirection = 'East';
+		} else if (keyCode === UP_ARROW) {
+			//console.log('up arrow')
+			currentState = game.transition(currentState, 'North')
+			desiredDirection = 'North';
+		} else if (keyCode === DOWN_ARROW) {
+			//console.log('down arrow')
+			currentState = game.transition(currentState, 'South')
+			desiredDirection = 'South'
+		} else {
+			//console.log("wrong key return")
+			return;
 		}
-	// }
-	game.calculateValue(fromState, currentState, desiredDirection);
+		game.calculateValue(fromState, currentState, desiredDirection);
+	} else {
+		iterations = 0;
+	}
 	loop();
 }
 
@@ -64,7 +58,7 @@ function setup() {
 		for (var x = 0; x < cols; x++) {
 			var State = new game.State(x, y);
 			states.push(State);
-			if(x == 0 && y == 2) {
+			if (x == 0 && y == 2) {
 				currentState = State;
 			}
 		}
@@ -73,6 +67,7 @@ function setup() {
 }
 
 function draw() {
+	//frameRate(50);
 	for (let s of states) {
 		//draw rectangles for states
 		var red = 0;
@@ -100,7 +95,7 @@ function draw() {
 		//for each state get the qvalues and iterate
 		var xoff = 0;
 		var yoff = 0;
-		
+
 		for (var act in s.qState) {
 			red = 0;
 			green = 0;
@@ -167,12 +162,28 @@ function draw() {
 
 			//draw qvalues in triagles
 			var qText = s.qState[act].value.toFixed(2);
+			var stateActionTries = s.qState[act].count;
 			text(qText, rectSize * 1.5 + s.location.x * rectSize + xoff, rectSize * 1.5 + s.location.y * rectSize + yoff);
+			text(stateActionTries, rectSize * 1.5 + s.location.x * rectSize + xoff, rectSize * 1.5 + s.location.y * rectSize + yoff + 20);
+			
 		}
 
 		//draw player
 		fill(0, 0, 180);
 		ellipse(rectSize * 1.5 + currentState.location.x * rectSize, rectSize * 1.5 + currentState.location.y * rectSize, 40);
 	}
-	noLoop();
+
+	if (iterations < 2) {
+		var fromState = currentState;
+		console.log("getting best action for ", currentState);
+		var bestAction = currentState.getBestAction();
+		var desiredDirection = bestAction;
+		currentState = game.transition(currentState, bestAction);
+		game.calculateValue(fromState, currentState, desiredDirection);
+		if(fromState.type == 'goal' || fromState.type == 'pit') {
+			iterations++;
+		}
+	}
+
+	//noLoop();
 }
